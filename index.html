@@ -1,0 +1,1176 @@
+<!doctype html>
+<html lang="pt">
+<!-- Leaflet (Mapa) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Desporto 360 — Portal Estático</title>
+
+  <!-- Bootstrap 5 CSS (CDN) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Google Font (opcional) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js (para gráficos simples) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+
+  <style>
+    /* Estilos personalizados para dar um aspeto profissional e não muito chamativo */
+    :root{
+      --accent: #0d6efd; /* azul bootstrap por defeito */
+      --muted: #6c757d;
+      --card-bg: #ffffff;
+      --page-bg: #f8f9fa;
+      --glass: rgba(255,255,255,0.6);
+    }
+
+    html,body{
+      height:100%;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, var(--page-bg) 0%, #ffffff 100%);
+      color:#212529;
+    }
+
+    /* Navbar custom */
+    .navbar-brand strong { color: var(--accent); }
+    .hero {
+      background-image: linear-gradient(0deg, rgba(13,110,253,0.06), rgba(13,110,253,0.03));
+      padding: 3rem 0;
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+
+    /* Cards and sections */
+    .card-sport { border: 0; box-shadow: 0 6px 18px rgba(18,38,63,0.06); }
+    .badge-mode { font-weight:600; letter-spacing:0.2px; }
+
+    /* Footer */
+    footer { background: #0f1723; color: #cbd5e1; padding: 2.5rem 0; }
+
+    /* Small helper */
+    .muted { color: var(--muted) !important; }
+
+    /* Responsive gallery */
+    .img-cover { object-fit: cover; height: 200px; width:100%; border-radius: .5rem; }
+
+    /* Layout helpers */
+    .section { padding: 3rem 0; }
+    .section-tight { padding: 1.5rem 0; }
+    .card-compact { padding: 1rem; border-radius: .75rem; }
+
+    /* Slight accent hover */
+    a:hover { text-decoration: none; opacity: 0.95; }
+
+    /* Toast position */
+    #liveToasts { position: fixed; right: 1rem; bottom: 1rem; z-index: 1080; }
+  </style>
+</head>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center" href="#">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" class="me-2" xmlns="http://www.w3.org/2000/svg">
+          <rect width="24" height="24" rx="4" fill="#0d6efd"/>
+          <path d="M6 8h12v2H6z" fill="white" opacity="0.95"/>
+        </svg>
+        <div>
+          <div style="line-height:1;">Desporto <strong>360</strong></div>
+          <small class="text-muted">Tudo sobre modalidades e competições</small>
+        </div>
+      </a>
+
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Alternar navegação">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav ms-auto me-3 align-items-lg-center">
+          <li class="nav-item"><a class="nav-link active" href="#home">Início</a></li>
+          <li class="nav-item"><a class="nav-link" href="#modalidades">Modalidades</a></li>
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="navCompet" role="button" data-bs-toggle="dropdown" aria-expanded="false">Competições</a>
+            <ul class="dropdown-menu" aria-labelledby="navCompet">
+              <li><a class="dropdown-item" href="#calendario">Calendário</a></li>
+              <li><a class="dropdown-item" href="#resultados">Resultados</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#stats">Estatísticas</a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="#sobre">Sobre</a></li>
+          <li class="nav-item"><a class="nav-link" href="#contactos">Contactos</a></li>
+        </ul>
+
+        <form class="d-flex" role="search" onsubmit="event.preventDefault(); showSearchToast();">
+          <input class="form-control me-2" type="search" placeholder="Pesquisar artigos, equipas..." aria-label="Pesquisar">
+          <button class="btn btn-outline-primary" type="submit">Pesquisar</button>
+        </form>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO / BANNER -->
+  <header id="home" class="hero">
+    <div class="container">
+      <div class="row align-items-center gy-4">
+        <div class="col-lg-7">
+          <h1 class="display-5 fw-bold">Bem-vindo ao <span class="text-primary">Desporto 360</span></h1>
+          <p class="lead text-muted">Um portal estático focado em competições, modalidades de combate e desportos coletivos futebol, basquetebol, andebol, voleibol e muito mais. Conteúdos, análises, calendário e fichas de atletas.</p>
+
+          <div class="d-flex gap-2 mt-3">
+            <a class="btn btn-primary btn-lg" href="#modalidades">Explorar Modalidades</a>
+            <a class="btn btn-outline-secondary btn-lg" data-bs-toggle="offcanvas" href="#offCanvasMenu" role="button">Ver Menu Rápido</a>
+          </div>
+
+          <div class="row g-2 mt-4">
+            <div class="col-sm-6">
+              <div class="card card-compact card-sport">
+                <div class="card-body">
+                  <h6 class="mb-1">Próximo Evento</h6>
+                  <p class="mb-0"><strong>Taça Ligal</strong> — Final 10 Janeiro</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <div class="card card-compact card-sport">
+                <div class="card-body">
+                  <h6 class="mb-1">Destaque</h6>
+                  <p class="mb-0">Análise: evolução tática no futebol moderno</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="col-lg-5">
+          <!-- CAROUSEL DE IMAGENS -->
+          <div id="heroCarousel" class="carousel slide shadow-sm rounded-3" data-bs-ride="carousel" aria-label="Imagens de desporto">
+            <div class="carousel-inner">
+              <div class="carousel-item active">
+                <img src="handebol.WEBP" class="d-block w-100 img-cover" alt="Imagem desporto 1">
+              </div>
+			  <div class="carousel-item active">
+                <img src="voleibol.1.jpg" class="d-block w-100 img-cover" alt="Imagem desporto 1">
+              </div>
+			  <div class="carousel-item active">
+                <img src="Jiu.jpg" class="d-block w-100 img-cover" alt="Imagem desporto 1">
+              </div>
+              <div class="carousel-item">
+                <img src="futebol.jpg" class="d-block w-100 img-cover" alt="Imagem desporto 2">
+              </div>
+              <div class="carousel-item">
+                <img src="basquete.1.WEBP" class="d-block w-100 img-cover" alt="Imagem desporto 3">
+              </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Anterior</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+              <span class="carousel-control-next-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Próximo</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- OFFCANVAS MENU (MENU RÁPIDO) -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="offCanvasMenu" aria-labelledby="offCanvasLabel">
+    <div class="offcanvas-header">
+      <h5 id="offCanvasLabel">Menu Rápido</h5>
+      <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+    </div>
+    <div class="offcanvas-body">
+      <p class="muted">Atalhos para secções importantes do site.</p>
+      <div class="list-group">
+        <a href="#modalidades" class="list-group-item list-group-item-action">Modalidades</a>
+        <a href="#calendario" class="list-group-item list-group-item-action">Calendário</a>
+        <a href="#stats" class="list-group-item list-group-item-action">Estatísticas</a>
+        <a href="#equipa" class="list-group-item list-group-item-action">Equipa / Autores</a>
+        <a href="#contactos" class="list-group-item list-group-item-action">Contactos</a>
+      </div>
+
+      <hr>
+      <h6>Subscrever Newsletter</h6>
+      <form id="formSubscribe" onsubmit="event.preventDefault(); subscribe();">
+        <div class="mb-3">
+          <label class="form-label small">Email</label>
+          <input type="email" class="form-control" placeholder="teu@email.com" required>
+        </div>
+        <button class="btn btn-primary w-100">Subscrever</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <main class="container my-5">
+    <!-- SECCÃO: MODALIDADES -->
+    <section id="modalidades" class="section">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3">Modalidades em Destaque</h2>
+        <div class="text-muted">Fácil navegação por famílias de desportos</div>
+      </div>
+
+      <div class="row g-4">
+        <!-- Futebol -->
+        <article class="col-lg-4 col-md-6">
+          <div class="card card-sport h-100">
+            <img src="futebol.jpg" class="card-img-top img-cover" alt="Futebol">
+            <div class="card-body">
+              <h5 class="card-title">Futebol</h5>
+              <p class="card-text muted">Competições de clubes, seleções e análise tática. Notícias sobre transferências, lesionados e classificações.</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <span class="badge bg-primary badge-mode">Coletivo</span>
+                  <span class="badge bg-secondary">Popular</span>
+                </div>
+                <div>
+                  <a class="btn btn-sm btn-outline-primary" href="#futebolDetalhes" data-bs-toggle="modal">Ver mais</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Basquetebol -->
+        <article class="col-lg-4 col-md-6">
+          <div class="card card-sport h-100">
+            <img src="basquete.jpg" class="card-img-top img-cover" alt="Basquetebol">
+            <div class="card-body">
+              <h5 class="card-title">Basquetebol</h5>
+              <p class="card-text muted">Modalidade explosiva; focamos em campeonatos, fintas e perfis de jogadores em destaque.</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <span class="badge bg-info text-dark badge-mode">Coletivo</span>
+                </div>
+                <div>
+                  <a class="btn btn-sm btn-outline-primary" href="#basketDetalhes" data-bs-toggle="modal">Ver mais</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Artes Marciais / Combate -->
+        <article class="col-lg-4 col-md-6">
+          <div class="card card-sport h-100">
+            <img src="desportos de combate.WEBP" class="card-img-top img-cover" alt="Combate">
+            <div class="card-body">
+              <h5 class="card-title">Desportos de Combate</h5>
+              <p class="card-text muted">Boxe, Jiu-Jitsu, MMA — regras, campeonatos, ranking e perfis de lutadores.</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <span class="badge bg-danger badge-mode">Combate</span>
+                </div>
+                <div>
+                  <a class="btn btn-sm btn-outline-primary" href="#combateDetalhes" data-bs-toggle="modal">Ver mais</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Andebol -->
+        <article class="col-lg-4 col-md-6">
+          <div class="card card-sport h-100">
+            <img src="andebol.jpg" class="card-img-top img-cover" alt="Andebol">
+            <div class="card-body">
+              <h5 class="card-title">Andebol</h5>
+              <p class="card-text muted">Táticas, jogadores-chave e as principais competições europeias.</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div><span class="badge bg-warning text-dark badge-mode">Coletivo</span></div>
+                <div><a class="btn btn-sm btn-outline-primary" href="#andebolDetalhes" data-bs-toggle="modal">Ver mais</a></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <!-- Voleibol -->
+        <article class="col-lg-4 col-md-6">
+          <div class="card card-sport h-100">
+            <img src="voleibol.jpg" class="card-img-top img-cover" alt="Voleibol">
+            <div class="card-body">
+              <h5 class="card-title">Voleibol</h5>
+              <p class="card-text muted">Estratégia de jogo, campeonatos e perfis de equipas nacionais.</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div><span class="badge bg-success badge-mode">Coletivo</span></div>
+                <div><a class="btn btn-sm btn-outline-primary" href="#voleibolDetalhes" data-bs-toggle="modal">Ver mais</a></div>
+              </div>
+            </div>
+          </div>
+        </article>
+		
+        <!--Automobilismo-->
+        <article class="col-lg-4 col-md-6">
+          <div class="card card-sport h-100">
+            <img src="automobilismo.jpg" class="card-img-top img-cover" alt="Automobilismo">
+            <div class="card-body">
+              <h5 class="card-title">Automobilismo</h5>
+              <p class="card-text muted">Corridas, campeonatos e perfis de equipas nacionais.</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div><span class="badge bg-success badge-mode">Coletivo</span></div>
+                <div><a class="btn btn-sm btn-outline-primary" href="#AutomobilismoDetalhes" data-bs-toggle="modal">Ver mais</a></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+    <!-- Secção de Outras Modalidades -->
+<article class="col-lg-4 col-md-6">
+  <div class="card card-sport h-100 d-flex flex-column justify-content-between">
+    <div class="p-3">
+      <h5 class="card-title">Outras Modalidades</h5>
+      <p class="card-text text-muted">
+        Esta secção inclui modalidades adicionais, como atletismo, ciclismo, ginástica, natação, entre outras. Aqui poderá explorar de forma geral a diversidade do desporto, abrangendo tanto práticas individuais como coletivas.
+      </p>
+    </div>
+    <div class="p-3 border-top">
+      <button class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#outrasDetalhes">
+        Ver lista completa
+      </button>
+    </div>
+  </div>
+</article>
+
+<!-- Modal de Outras Modalidades -->
+<div class="modal fade" id="outrasDetalhes" tabindex="-1" aria-labelledby="outrasLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="outrasLabel">Outras Modalidades</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p>
+          Esta categoria engloba diversas modalidades que complementam o panorama desportivo, incluindo atletismo, ciclismo, ginástica, natação, desportos aquáticos, desportos de inverno e muitos outros. Cada modalidade apresenta regras, equipamentos e técnicas específicas, contribuindo para o desenvolvimento físico, mental e social dos praticantes. Estas práticas promovem a disciplina, a perseverança e o espírito de equipa, sendo uma parte essencial da experiência desportiva global.
+        </p>
+        
+        <!-- Galeria de imagens -->
+        <div class="row g-3 mt-3">
+          <div class="col-6 col-md-4">
+            <img src="atletismo.jpg" class="img-fluid rounded" alt="Atletismo">
+            <p class="text-center small mt-1">Atletismo</p>
+          </div>
+          <div class="col-6 col-md-4">
+            <img src="ciclismo.jpeg" class="img-fluid rounded" alt="Ciclismo">
+            <p class="text-center small mt-1">Ciclismo</p>
+          </div>
+          <div class="col-6 col-md-4">
+            <img src="ginastica.jpg" class="img-fluid rounded" alt="Ginástica">
+            <p class="text-center small mt-1">Ginástica</p>
+          </div>
+          <div class="col-6 col-md-4">
+            <img src="natação.avif" class="img-fluid rounded" alt="Natação">
+            <p class="text-center small mt-1">Natação</p>
+          </div>
+          <div class="col-6 col-md-4">
+            <img src="surf.jpg" class="img-fluid rounded" alt="Desportos Aquáticos">
+            <p class="text-center small mt-1">Desportos Aquáticos</p>
+          </div>
+          <div class="col-6 col-md-4">
+            <img src="desportosinverno.jpg" class="img-fluid rounded" alt="Desportos de Inverno">
+            <p class="text-center small mt-1">Desportos de Inverno</p>
+          </div>
+        </div>
+		<!-- Área para mostrar informações da modalidade -->
+       <div id="infoModalidade" class="mt-4 p-3 border rounded bg-light">
+  <p>Selecione uma modalidade acima para ver detalhes.</p>
+</div>
+        <!-- Fim galeria -->
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+      
+
+    </section>
+	
+	<section class="section">
+  <h3 class="h5">Multimédia</h3>
+
+  <video controls width="100%" class="mb-3">
+    <source src="1295-145209438_small.mp4" type="video/mp4">
+      </video>
+
+  <audio controls>
+    <source src="volvo-engine-431665.mp3" type="audio/mpeg">
+    O teu browser não suporta áudio.
+  </audio>
+</section>
+
+
+    <!-- SECCÃO: COMPETIÇÕES / CALENDÁRIO -->
+    <section id="calendario" class="section bg-white rounded-3 shadow-sm">
+      <div class="row g-4 align-items-center">
+        <div class="col-lg-7">
+          <h3 class="h4">Calendário de Competições</h3>
+          <p class="muted">Consulta os próximos eventos e filtros por modalidade.</p>
+
+          <!-- FILTROS SIMPLES -->
+          <form class="row g-2 align-items-center mb-3" onsubmit="event.preventDefault();">
+            <div class="col-auto">
+              <label class="form-label small">Modalidade</label>
+              <select class="form-select" aria-label="Filtro por modalidade">
+                <option selected>Todos</option>
+                <option>Futebol</option>
+                <option>Basquetebol</option>
+                <option>Combate</option>
+                <option>Andebol</option>
+              </select>
+            </div>
+            <div class="col-auto">
+              <label class="form-label small">Mês</label>
+              <select class="form-select">
+                <option selected>Novembro</option>
+                <option>Dezembro</option>
+                <option>Janeiro</option>
+              </select>
+            </div>
+            <div class="col-auto align-self-end">
+              <button class="btn btn-primary">Filtrar</button>
+            </div>
+          </form>
+
+          <!-- TABELA RESPONSIVA -->
+          <div class="table-responsive">
+            <table class="table table-borderless align-middle">
+              <thead class="small text-muted">
+                <tr>
+                  <th>Data</th>
+                  <th>Competição</th>
+                  <th>Modalidade</th>
+                  <th>Local</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>2026-12-12</td>
+                  <td>Taça Nacional - Final</td>
+                  <td>Futebol</td>
+                  <td>Estádio Nacional</td>
+                  <td><span class="badge bg-success">Confirmado</span></td>
+                </tr>
+                <tr>
+                  <td>2026-12-18</td>
+                  <td>Final Four</td>
+                  <td>Basquetebol</td>
+                  <td>Pavilhão Municipal</td>
+                  <td><span class="badge bg-warning text-dark">A Confirmar</span></td>
+                </tr>
+                <tr>
+                  <td>2026-11-30</td>
+                  <td>Gala de Jiu-Jitsu</td>
+                  <td>Combate</td>
+                  <td>Centro Desportivo</td>
+                  <td><span class="badge bg-secondary">Encerrado</span></td>
+                </tr>
+                <tr>
+                  <td>2026-01-07</td>
+                  <td>Circuito Nacional</td>
+                  <td>Andebol</td>
+                  <td>Vários</td>
+                  <td><span class="badge bg-info text-dark">Planeado</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="col-lg-5">
+          <div class="card card-sport p-3">
+            <h6 class="mb-2">Calendário Rápido</h6>
+            <div class="list-group mb-3">
+              <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="#">
+                Taça Nacional — 12 Dez
+                <span class="badge bg-primary">Futebol</span>
+              </a>
+              <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="#">
+                Final Four — 18 Dez
+                <span class="badge bg-info text-dark">Basquetebol</span>
+              </a>
+              <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="#">
+                Gala JJ — 30 Nov
+                <span class="badge bg-danger">Combate</span>
+              </a>
+            </div>
+
+            <h6>Subscrever Calendário</h6>
+            <p class="small muted">Adiciona notificações para eventos importantes.</p>
+            <button class="btn btn-outline-primary w-100" onclick="showAddCalendar();">Adicionar ao Calendário</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCÃO: ARTIGOS / DESTAQUES -->
+    <section id="destaques" class="section-tight">
+      <div class="row g-4">
+        <div class="col-lg-8">
+          <h3 class="h5 mb-3">Últimos Artigos</h3>
+
+          <article class="card mb-3 card-sport">
+            <div class="row g-0 align-items-center">
+              <div class="col-md-4">
+                <img src="carros.WEBP" class="img-fluid rounded-start" alt="Artigo 1">
+              </div>
+              <div class="col-md-8">
+                <div class="card-body">
+                  <h5 class="card-title">O regresso mais esperado passou, finalmente, a confirmado. Portugal continua a fazer parte da história da Fórmula 1 que, em 2027 e 2028</h5>
+                  <p class="card-text muted">Esta história que atravessa séculos trouxe a Portugal os melhores pilotos do mundo ao longo dos últimos 74 anos, atravessando três regiões e cinco circuitos.</p>
+                  <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary" href="#">Ler mais</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="#">Guardar</a>
+                    <small class="text-muted ms-auto">3 min leitura</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card mb-3 card-sport">
+            <div class="row g-0 align-items-center">
+              <div class="col-md-4">
+                <img src="futebol.3.WEBP" class="img-fluid rounded-start" alt="Artigo 2">
+              </div>
+              <div class="col-md-8">
+                <div class="card-body">
+                  <h5 class="card-title">Evolução tática no futebol moderno</h5>
+                  <p class="card-text muted">Análise aprofundada sobre formações, transições e o papel do treinador no futebol contemporâneo.</p>
+                  <div class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary" href="#">Ler mais</a>
+                    <a class="btn btn-sm btn-outline-secondary" href="#">Guardar</a>
+                    <small class="text-muted ms-auto">4 min leitura</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+        </div>
+
+        <aside class="col-lg-4">
+          <div class="card card-sport p-3">
+            <h6>Top Atletas do Mês</h6>
+            <ul class="list-group list-group-flush mt-2">
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Cristiano Ronaldo<span class="badge bg-primary rounded-pill">Futebol</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Nikola Jokic  <span class="badge bg-info text-dark rounded-pill">Basquetebol</span>
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                Mica Galvão <span class="badge bg-danger rounded-pill">Jiu-Jitsu</span>
+              </li>
+            </ul>
+
+            <div class="mt-3">
+              <h6 class="mb-1">Newsletter</h6>
+              <p class="small muted">Recebe um resumo semanal com as melhores notícias.</p>
+              <form onsubmit="event.preventDefault(); subscribe();">
+                <div class="input-group">
+                  <input type="email" class="form-control" placeholder="teu@email.com" required>
+                  <button class="btn btn-primary" type="submit">Subscrever</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- SECCÃO: ESTATÍSTICAS (Chart.js) -->
+    <section id="stats" class="section">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="h4">Estatísticas e Análises</h3>
+        <small class="muted">Visão geral rápida</small>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <div class="card card-sport p-3">
+            <h6>Distribuição de Modalidades</h6>
+            <canvas id="chartModalidades" height="220"></canvas>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="card card-sport p-3">
+            <h6>Jogos por mês (Últimos 6 meses)</h6>
+            <canvas id="chartJogosMes" height="220"></canvas>
+          </div>
+        </div>
+      </div>
+	  <button class="btn btn-outline-success mt-2" onclick="exportarExcel()">
+       Exportar Estatística para Excel
+      </button>
+
+    </section>
+
+    <!-- SECCÃO: EQUIPA / AUTORES -->
+    <section id="equipa" class="section">
+      <h3 class="h4 mb-3">Elementos do Grupo</h3>
+      <p class="muted">Responsáveis pelo desenvolvimento do projeto e conteúdos.</p>
+
+      <div class="row g-3">
+        <div class="col-md-6 col-lg-3">
+          <div class="card card-sport text-center p-3">
+            <img src="pessoa.jpg" alt="Foto Lucas" class="rounded-circle mx-auto d-block" style="width:100px;height:100px;object-fit:cover;">
+            <div class="card-body">
+              <h6 class="mb-0">Lucas Barbosa</h6>
+              <small class="text-muted">nº 18</small>
+              <p class="small muted mt-2">Design & Pesquisa</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+          <div class="card card-sport text-center p-3">
+            <img src="pessoa.jpg" alt="Foto Dinis" class="rounded-circle mx-auto d-block" style="width:100px;height:100px;object-fit:cover;">
+            <div class="card-body">
+              <h6 class="mb-0">Dinis Lobo</h6>
+              <small class="text-muted">nº 7</small>
+              <p class="small muted mt-2">Front-end & Conteúdos</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Espaço para adicionar novos membros sem alterar layout -->
+        <div class="col-md-6 col-lg-3">
+          <div class="card card-sport text-center p-3">
+            <div class="card-body">
+              <h6 class="mb-0 muted">Adicionar Membro</h6>
+              <p class="small muted mt-2">Clique em editar para inserir novo elemento</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6 col-lg-3">
+          <div class="card card-sport text-center p-3">
+            <div class="card-body">
+              <h6 class="mb-0 muted">Contato</h6>
+              <p class="small muted mt-2">teu@dominio.pt</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECCÃO: FAQ / ACORDEÃO -->
+    <section id="faq" class="section bg-white rounded-3 p-3">
+      <h3 class="h5 mb-3">Perguntas Frequentes</h3>
+
+      <div class="accordion" id="faqAccordion">
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="faqOne">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+             Que tipos de desporto posso acompanhar no site?
+            </button>
+          </h2>
+          <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="faqOne" data-bs-parent="#faqAccordion">
+            <div class="accordion-body">
+              O nosso site cobre uma grande variedade de desportos, incluindo futebol, basquetebol, ténis, atletismo, desportos radicais, entre outros. Também disponibilizamos notícias, resultados e análises de competições nacionais e internacionais.
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="faqTwo">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+              Como posso criar uma conta no site?
+            </button>
+          </h2>
+          <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="faqTwo" data-bs-parent="#faqAccordion">
+            <div class="accordion-body">
+              Para criar uma conta, basta clicar em “Registar” no canto superior direito, preencher os dados solicitados (nome, email e password) e seguir os passos de verificação enviados para o seu email.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+	
+	<section id="mapa" class="section">
+  <h3 class="h5 mb-3">Localização</h3>
+  <div id="map" style="height:400px;" class="rounded shadow-sm"></div>
+    </section>
+
+
+    <!-- SECCÃO: CONTACTOS / FORMULÁRIO -->
+    <section id="contactos" class="section">
+      <div class="row g-4">
+        <div class="col-lg-6">
+          <h3 class="h5">Contactos</h3>
+          <p class="muted">Envia-nos uma mensagem — formulário simples com validação HTML.</p>
+
+          <form id="contactForm" class="bg-white p-3 rounded-3 shadow-sm" onsubmit="event.preventDefault(); sendContact();">
+            <div class="mb-3">
+              <label class="form-label">Nome</label>
+              <input type="text" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Mensagem</label>
+              <textarea class="form-control" rows="5" required></textarea>
+            </div>
+
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" value="" id="consentCheck" required>
+              <label class="form-check-label small" for="consentCheck">Aceito receber comunicações relacionadas ao site.</label>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary" type="submit">Enviar Mensagem</button>
+              <button class="btn btn-outline-secondary" type="reset">Limpar</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="col-lg-6">
+          <h3 class="h5">Localização & Info</h3>
+          <div class="card card-sport p-3">
+            <h6 class="mb-1">Escola Secundária Martins Sarmento</h6>
+            <p class="small muted">Guimarães</p>
+            <p class="small mb-0">Telefone: +351 912 345 678</p>
+            <p class="small">Email: contacto@desporto360.pt</p>
+            <hr>
+            <h6 class="mb-1">Redes Sociais</h6>
+            <div class="d-flex gap-2">
+              <a class="btn btn-outline-primary btn-sm" href="#" aria-label="Facebook">Facebook</a>
+              <a class="btn btn-outline-info btn-sm" href="#" aria-label="Twitter">Twitter</a>
+              <a class="btn btn-outline-danger btn-sm" href="#" aria-label="Instagram">Instagram</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- TOASTS -->
+  <div id="liveToasts" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- MODAIS PARA DETALHES (exemplos) -->
+  <div class="modal fade" id="futebolDetalhes" tabindex="-1" aria-labelledby="futebolLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="futebolLabel">Futebol </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p>
+O futebol é uma modalidade desportiva coletiva praticada entre duas equipas de onze jogadores, cujo objetivo principal consiste em introduzir a bola na baliza adversária, respeitando um conjunto de regras estabelecidas pelos organismos reguladores internacionais. Reconhecido como o desporto mais praticado e acompanhado a nível mundial, o futebol destaca-se pela sua dimensão competitiva, social e cultural, estando presente em contextos amadores e profissionais.
+<br><br>
+Para além das capacidades físicas, como a resistência, a velocidade e a coordenação motora, o futebol exige elevados níveis de organização tática, cooperação entre os jogadores e tomada de decisão em tempo real. A modalidade é estruturada em diversas competições nacionais e internacionais, envolvendo clubes e seleções, desempenhando igualmente um papel relevante na promoção de valores como o trabalho em equipa, o respeito pelas regras e o espírito desportivo.
+</p>
+
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAIS ADICIONAIS (modelo reutilizável) -->
+  <div class="modal fade" id="basketDetalhes" tabindex="-1" aria-labelledby="basketLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="basketLabel">Basquetebol</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+          <p>
+O basquetebol é uma modalidade desportiva coletiva disputada entre duas equipas de cinco jogadores, tendo como principal objetivo marcar pontos através da introdução da bola no cesto adversário. Caracteriza-se por um ritmo de jogo elevado, com ações rápidas e constantes transições entre ataque e defesa, sendo uma das modalidades mais populares em contextos escolares e competitivos.
+<br><br>
+Esta modalidade exige dos atletas um elevado nível de coordenação, agilidade, precisão e capacidade de leitura do jogo, bem como uma forte componente estratégica associada às formações e sistemas táticos. O basquetebol é regulamentado por entidades oficiais a nível nacional e internacional, estando presente em diversas competições profissionais e amadoras, contribuindo para o desenvolvimento físico, técnico e social dos seus praticantes.
+</p>
+
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="combateDetalhes" tabindex="-1" aria-labelledby="combateLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="combateLabel">Desportos de Combate </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body">
+         <p>
+Os desportos de combate englobam modalidades competitivas baseadas no confronto direto entre atletas, onde a técnica, a força, a resistência e a estratégia desempenham um papel fundamental. Entre as disciplinas mais conhecidas encontram-se o boxe, o jiu-jitsu, o judo, o taekwondo e o MMA, cada uma com regras, categorias de peso e sistemas de pontuação próprios. Estas modalidades promovem não só o desempenho físico, mas também valores como a disciplina, o respeito e o controlo emocional.
+</p>
+
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="modal fade" id="andebolDetalhes" tabindex="-1" aria-labelledby="andebolLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="andebolLabel">Andebol</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p>
+O andebol é uma modalidade desportiva coletiva praticada entre duas equipas de sete jogadores, cujo objetivo consiste em marcar golos através do lançamento da bola para a baliza adversária. Caracteriza-se por um ritmo de jogo intenso, com rápidas transições entre ataque e defesa, exigindo elevados níveis de resistência física, agilidade e coordenação motora.
+<br><br>
+Para além da componente física, o andebol destaca-se pela sua complexidade tática e pela necessidade de cooperação constante entre os jogadores. A modalidade é regulamentada por entidades nacionais e internacionais, estando presente em diversas competições profissionais e amadoras, promovendo valores como o trabalho em equipa, o respeito pelas regras e o espírito desportivo.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="voleibolDetalhes" tabindex="-1" aria-labelledby="voleibolLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="voleibolLabel">Voleibol</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p>
+O voleibol é uma modalidade desportiva coletiva disputada por duas equipas de seis jogadores, separadas por uma rede, tendo como principal objetivo fazer a bola tocar no solo do campo adversário. Esta modalidade distingue-se pela ausência de contacto físico direto entre os atletas e pela elevada exigência técnica.
+<br><br>
+O voleibol requer dos praticantes precisão, coordenação, rapidez de reação e capacidade estratégica, sendo amplamente praticado em contextos recreativos, escolares e competitivos. A modalidade é organizada e regulamentada por federações oficiais, contribuindo para o desenvolvimento físico, técnico e social dos seus praticantes.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal fade" id="AutomobilismoDetalhes" tabindex="-1" aria-labelledby="autoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="autoLabel">Automobilismo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <p>
+O automobilismo é uma modalidade desportiva motorizada que envolve competições realizadas com veículos de alta performance, em circuitos fechados ou percursos definidos. Esta modalidade abrange diversas categorias, como a Fórmula 1, os ralis, o endurance e as competições de turismo, cada uma com regulamentos técnicos e desportivos próprios.
+<br><br>
+Para além da perícia do piloto, o automobilismo destaca-se pela forte componente tecnológica e estratégica, envolvendo equipas multidisciplinares responsáveis pelo desenvolvimento, manutenção e otimização dos veículos. A modalidade é regulamentada por entidades internacionais, desempenhando um papel relevante no avanço da inovação tecnológica e na promoção da segurança rodoviária.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section class="section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <section class="section bg-white p-3 rounded-3 shadow-sm container">
+
+
+        <div class="bg-white p-4 rounded-3 shadow-sm">
+          <h3 class="h5 mb-3">Inscrição em Evento</h3>
+
+          <form onsubmit="event.preventDefault(); createToast('Inscrição','Inscrição realizada com sucesso!'); this.reset();">
+            <div class="mb-3">
+              <label class="form-label">Nome</label>
+              <input type="text" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Modalidade</label>
+              <select class="form-select" required>
+                <option>Futebol</option>
+                <option>Basquetebol</option>
+                <option>Andebol</option>
+                <option>Voleibol</option>
+                <option>Combate</option>
+              </select>
+            </div>
+
+            <button class="btn btn-primary w-100">Inscrever</button>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- FOOTER -->
+  <footer class="mt-5">
+    <div class="container">
+      <div class="row gy-4">
+        <div class="col-md-6">
+          <h5 class="text-white">Desporto 360</h5>
+          <p class="muted small">Plataforma de demonstração criada por Lucas Barbosa (nº18) e Dinis Lobo (nº7). Conteúdos fictícios para fins académicos.</p>
+        </div>
+
+        <div class="col-md-3">
+          <h6 class="text-white small">Links úteis</h6>
+          <ul class="list-unstyled small">
+            <li><a href="#home" class="muted">Início</a></li>
+            <li><a href="#modalidades" class="muted">Modalidades</a></li>
+            <li><a href="#calendario" class="muted">Calendário</a></li>
+          </ul>
+        </div>
+
+        <div class="col-md-3">
+          <h6 class="text-white small">Políticas</h6>
+          <ul class="list-unstyled small">
+            <li><a href="#" class="muted">Privacidade</a></li>
+            <li><a href="#" class="muted">Termos</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <hr class="mt-4" style="border-color: rgba(255,255,255,0.06)" />
+      <div class="d-flex justify-content-between small muted">
+        <div>&copy; 2025 Desporto 360</div>
+        <div>Feito por Lucas & Dinis</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- SCRIPTS BOOTSTRAP -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // ---------------------------
+    // Funções JS simples para UX
+    // ---------------------------
+
+    // Mostrar toast de pesquisa
+    function showSearchToast(){
+      createToast('Pesquisa','A funcionalidade de pesquisa neste site é demonstrativa.');
+    }
+
+    // Criar toast reutilizável
+    function createToast(title, body){
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = `
+        <div class="toast align-items-center text-bg-white border" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="d-flex">
+            <div class="toast-body">
+              <strong>${title}</strong><br>
+              <small class="muted">${body}</small>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Fechar"></button>
+          </div>
+        </div>
+      `;
+      const container = document.getElementById('liveToasts');
+      container.append(wrapper);
+      const toastEl = wrapper.querySelector('.toast');
+      const toast = new bootstrap.Toast(toastEl, { delay: 3500 });
+      toast.show();
+      // remover do DOM quando esconder
+      toastEl.addEventListener('hidden.bs.toast', () => wrapper.remove());
+    }
+
+    // Simular subscrição
+    function subscribe(){
+      createToast('Subscrever', 'Obrigado! Em ambiente real, o email seria registado.');
+    }
+
+    // Simular envio de contacto
+    function sendContact(){
+      createToast('Mensagem enviada', 'Obrigado pelo contacto — iremos responder em breve.');
+      // Repor formulário
+      const form = document.getElementById('contactForm');
+      if(form) form.reset();
+    }
+
+    // Simular adicionar calendário
+    function showAddCalendar(){
+      createToast('Calendário', 'Evento adicionado (simulado). Em produção, exportar para iCal/Google Calendar.');
+    }
+
+    // Inicializar tooltips (componentes de bootstrap)
+    document.addEventListener('DOMContentLoaded', function(){
+      const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+      tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+      })
+    });
+
+    // ---------------------------
+    // Chart.js exemplos simples
+    // ---------------------------
+    document.addEventListener('DOMContentLoaded', function(){
+      const ctx1 = document.getElementById('chartModalidades');
+      if(ctx1){
+        new Chart(ctx1, {
+          type: 'doughnut',
+          data: {
+            labels: ['Futebol','Basquetebol','Combate','Andebol','Automobilismo','Outros'],
+            datasets: [{
+              label: 'Modalidades',
+              data: [45, 20, 12, 10, 13, 19],
+              // sem cores explícitas para manter estilo neutro (Chart.js usa padrão)
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } }
+          }
+        });
+      }
+
+      const ctx2 = document.getElementById('chartJogosMes');
+      if(ctx2){
+        new Chart(ctx2, {
+          type: 'bar',
+          data: {
+            labels: ['Jun','Jul','Aug','Sep','Oct','Nov'],
+            datasets: [{
+              label: 'Jogos',
+              data: [24, 30, 28, 35, 38, 22],
+              barThickness: 18
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      }
+    });
+
+    // ---------------------------
+    // Keyboard shortcut: "?" -> abrir FAQ modal (exemplo)
+    // ---------------------------
+    document.addEventListener('keydown', function(e){
+      if(e.key === '?'){
+        const faq = document.getElementById('faq');
+        if(faq){
+          faq.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          createToast('Atalho', 'Navegaste para a secção FAQ.');
+        }
+      }
+    });
+	
+  function mostrarInfo(modalidade) {
+    const infoDiv = document.getElementById('infoModalidade');
+    if (!infoDiv) return; // evita erros se o elemento não existir
+
+    let texto = '';
+
+    switch(modalidade) {
+      case 'atletismo':
+        texto = "O atletismo engloba diversas provas de corrida, salto e lançamento. Desenvolve resistência, velocidade e força, promovendo disciplina e espírito competitivo.";
+        break;
+      case 'ciclismo':
+        texto = "O ciclismo inclui provas em estrada, pista, montanha e BMX. Exige resistência, técnica e estratégia, sendo também uma modalidade olímpica de grande prestígio.";
+        break;
+      case 'ginastica':
+        texto = "A ginástica compreende diversas disciplinas, como artística, rítmica e trampolim. Desenvolve flexibilidade, força e coordenação motora.";
+        break;
+      case 'natacao':
+        texto = "A natação envolve provas em piscina e águas abertas. Trabalha resistência, força e técnica respiratória, sendo também terapêutica e recreativa.";
+        break;
+      case 'aquaticos':
+        texto = "Incluem surf, vela, polo aquático e outros. Desenvolvem equilíbrio, resistência e coordenação, proporcionando diversão e contacto com o meio aquático.";
+        break;
+      case 'inverno':
+        texto = "Englobam esqui, snowboard, hóquei no gelo, entre outros. Exigem técnica, resistência e coragem, além de promoverem diversão em ambientes de frio e neve.";
+        break;
+      default:
+        texto = "Selecione uma modalidade acima para ver detalhes.";
+    }
+
+    infoDiv.innerHTML = `<p>${texto}</p>`;
+  }
+
+   
+  document.addEventListener("DOMContentLoaded", function () {
+  const map = L.map('map').setView([41.4446, -8.2962], 14); // Guimarães
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  L.marker([41.4446, -8.2962])
+    .addTo(map)
+    .bindPopup('Escola Secundária Martins Sarmento')
+    .openPopup();
+});
+
+
+  
+function exportarExcel() {
+  const dados = [
+    ["Modalidade", "Quantidade"],
+    ["Futebol", 45],
+    ["Basquetebol", 20],
+    ["Combate", 12],
+    ["Andebol", 10],
+    ["Automobilismo", 13],
+    ["Outros", 19]
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(dados);
+
+  XLSX.utils.book_append_sheet(wb, ws, "Estatísticas");
+  XLSX.writeFile(wb, "estatisticas_desporto360.xlsx");
+}
+
+
+
+
+  </script>
+
+  <!-- Comentários finais:
+       - Este ficheiro é um ponto de partida para um site estático profissional.
+       - Para transformar em site "real" com dados dinâmicos, integrar APIs, gerar páginas estáticas (SSG) ou adicionar back-end.
+       - As imagens usam https://picsum.photos como placeholders; substitui por imagens reais antes da entrega.
+  -->
+
+</body>
+</html>
